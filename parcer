@@ -1,0 +1,111 @@
+import json
+import requests
+from textblob import TextBlob
+
+# Ваш токен бота Telegram
+telegram_bot_token = "YOUR_TELEGRAM_BOT_TOKEN"
+
+# Ваш chat ID
+telegram_chat_id = YOUR_CHAT_ID
+
+# Функция для отправки сообщения в Telegram
+def send_telegram_message(message):
+    url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+    params = {
+        "chat_id": telegram_chat_id,
+        "text": message
+    }
+    response = requests.get(url, params=params)
+    return response.json()
+
+# Функция для получения заголовков новостей с веб-сайта
+def get_news_headlines(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        return ""
+
+# Функция для анализа тональности заголовка
+def analyze_sentiment(headline):
+    analysis = TextBlob(headline)
+    sentiment = analysis.sentiment.polarity
+    if sentiment > 0:
+        return "положительная"
+    elif sentiment < 0:
+        return "отрицательная"
+    else:
+        return "нейтральная"
+
+# Функция для получения данных о криптовалютах с API CryptoRank
+def get_crypto_currencies(api_key):
+    endpoint = "https://api.cryptorank.io/v1/currencies"
+    params = {
+        "api_key": api_key
+    }
+
+    response = requests.get(endpoint, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        print("Ошибка при запросе к API CryptoRank")
+        return None
+
+# Ваш ключ API CryptoRank
+api_key = "YOUR_API_KEY"
+
+# Список новостных источников
+news_sources = [
+    'https://coinjournal.net',
+    'https://cointelegraph.com/',
+    'https://www.coindesk.com/',
+    'https://bitcoinmagazine.com/',
+    'https://www.reddit.com/r/CryptoCurrency/',
+    'https://www.bloomberg.com/crypto',
+    'https://news.bitcoin.com/',
+]
+
+# Переменные для подсчета положительных и отрицательных новостей
+positive_count = 0
+negative_count = 0
+total_count = 0
+
+# Цикл для обработки каждого новостного источника
+for source in news_sources:
+    headlines = get_news_headlines(source).split('\n')
+    for headline in headlines:
+        if headline:
+            sentiment = analyze_sentiment(headline)
+            total_count += 1
+            if sentiment == "положительная":
+                positive_count += 1
+            elif sentiment == "отрицательная":
+                negative_count += 1
+
+# Вычисление процентов тональности новостей
+percent_positive = (positive_count / total_count) * 100
+percent_negative = (negative_count / total_count) * 100
+
+# Пример запроса данных о криптовалютах
+crypto_currencies = get_crypto_currencies(api_key)
+
+if crypto_currencies:
+    # Обработайте данные о криптовалютах здесь
+    crypto_info = "Данные о криптовалютах:\n"
+    for currency in crypto_currencies:
+        name = currency.get("name", "N/A")
+        symbol = currency.get("symbol", "N/A")
+        price = currency.get("price", "N/A")
+        market_cap = currency.get("market_cap", "N/A")
+        volume_24h = currency.get("volume_24h", "N/A")
+        change_24h = currency.get("change_24h", "N/A")
+
+        crypto_info += f"Название: {name}\nСимвол: {symbol}\nЦена: {price}\nРыночная капитализация: {market_cap}\n" \
+                       f"Объем (за 24 часа): {volume_24h}\nИзменение (за 24 часа): {change_24h}\n\n"
+
+    # Отправьте информацию о криптовалютах и результаты анализа в чат в Telegram
+    message = f"Процент положительных новостей: {percent_positive:.2f}%\nПроцент отрицательных новостей: {percent_negative:.2f}%\n\n{crypto_info}"
+    response = send_telegram_message(message)
+    print("Результат отправлен в Telegram.")
